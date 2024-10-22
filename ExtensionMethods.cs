@@ -5,6 +5,8 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using OpenTK.Mathematics;
+using NComplex = NAudio.Dsp.Complex;
+using SysComplex = System.Numerics.Complex;
 
 namespace WinForms_TestApp
 {
@@ -128,6 +130,53 @@ namespace WinForms_TestApp
             matrix.M44 += matrix.M14 * x + matrix.M24 * y + matrix.M34 * z;
 
             return matrix;
+        }
+
+        public static float Hypot(float a, float b)
+        {
+            // Using
+            //   sqrt(a^2 + b^2) = |a| * sqrt(1 + (b/a)^2)
+            // we can factor out the larger component to dodge overflow even when a * a would overflow.
+
+            a = Math.Abs(a);
+            b = Math.Abs(b);
+
+            float small, large;
+            if (a < b)
+            {
+                small = a;
+                large = b;
+            }
+            else
+            {
+                small = b;
+                large = a;
+            }
+
+            if (small == 0.0)
+            {
+                return (large);
+            }
+            else if (float.IsPositiveInfinity(large) && !float.IsNaN(small))
+            {
+                // The NaN test is necessary so we don't return +inf when small=NaN and large=+inf.
+                // NaN in any other place returns NaN without any special handling.
+                return (float.PositiveInfinity);
+            }
+            else
+            {
+                float ratio = small / large;
+                return (large * MathF.Sqrt(1.0f + ratio * ratio));
+            }
+
+        }
+        public static float Abs(this NComplex cmplx) => Hypot(cmplx.X, cmplx.Y);
+        public static float LinearToDecibels(float linear)
+        {
+            // It's not possible to calculate decibels for a zero linear value since it would be -Inf.
+            // -1000.0 dB represents a very tiny linear value in case we ever reach this case.
+            if (linear == 0.0f) return -1000.0f;
+            return 20.0f * MathF.Log10(linear);
         }
     }
 }

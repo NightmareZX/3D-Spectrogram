@@ -36,7 +36,7 @@ namespace WinForms_TestApp
     {
         private static DebugProc DebugMessageDelegate = OnDebugMessage;
 
-        string testFile = "birds-ambiance-204513.mp3";
+        string testFile = "birds-ambiance-204513-mono.mp3";
         string testPath = "C:\\Users\\Zsolt\\source\\repos\\WinForms_TestApp\\";
         int frames = 0;
         int fftSize = 2048;
@@ -306,15 +306,19 @@ namespace WinForms_TestApp
             while (waveOut.PlaybackState == PlaybackState.Playing && !canceling)
             {
                 freqByteData = analyzer.GetByteFrequencyData();
+                //for (int i = 0; i > freqByteData.Length; i++)
+                //{
+                //    freqByteData[i] = 120;
+                //}
 
                 Invoke(() =>
                 {
-                    StringBuilder sb = new();
-                    foreach (float fl in freqByteData)
-                    {
-                        sb.Append(',' + fl.ToString());
-                    }
-                    TextBox_Data.Text = sb.ToString();
+                    //StringBuilder sb = new();
+                    //foreach (float fl in freqByteData)
+                    //{
+                    //    sb.Append(',' + fl.ToString());
+                    //}
+                    //TextBox_Data.Text = sb.ToString();
                     DrawGL();
                 });
 
