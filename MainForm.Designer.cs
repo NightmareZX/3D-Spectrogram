@@ -28,9 +28,10 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             GlControl_MainView = new OpenTK.GLControl.GLControl();
             Label_Frames = new Label();
-            TextBox_Data = new TextBox();
+            Timer_UpdateGL = new System.Windows.Forms.Timer(components);
             SuspendLayout();
             // 
             // GlControl_MainView
@@ -43,7 +44,7 @@
             GlControl_MainView.Name = "GlControl_MainView";
             GlControl_MainView.Profile = OpenTK.Windowing.Common.ContextProfile.Core;
             GlControl_MainView.SharedContext = null;
-            GlControl_MainView.Size = new Size(990, 593);
+            GlControl_MainView.Size = new Size(1458, 593);
             GlControl_MainView.TabIndex = 0;
             GlControl_MainView.Load += GlControl_MainView_Load;
             GlControl_MainView.Paint += GlControl_MainView_Paint;
@@ -57,21 +58,17 @@
             Label_Frames.TabIndex = 1;
             Label_Frames.Text = "0";
             // 
-            // TextBox_Data
+            // Timer_UpdateGL
             // 
-            TextBox_Data.Location = new Point(1008, 32);
-            TextBox_Data.Multiline = true;
-            TextBox_Data.Name = "TextBox_Data";
-            TextBox_Data.ReadOnly = true;
-            TextBox_Data.Size = new Size(466, 593);
-            TextBox_Data.TabIndex = 2;
+            Timer_UpdateGL.Enabled = true;
+            Timer_UpdateGL.Interval = 20;
+            Timer_UpdateGL.Tick += Timer_UpdateGL_Tick;
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1482, 648);
-            Controls.Add(TextBox_Data);
             Controls.Add(Label_Frames);
             Controls.Add(GlControl_MainView);
             Name = "MainForm";
@@ -85,6 +82,6 @@
 
         private OpenTK.GLControl.GLControl GlControl_MainView;
         private Label Label_Frames;
-        private TextBox TextBox_Data;
+        private System.Windows.Forms.Timer Timer_UpdateGL;
     }
 }

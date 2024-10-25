@@ -64,7 +64,11 @@ namespace WinForms_TestApp
                 incompleteDataIndex = -1;
                 for (int i = 0; i < samplesRead; i++)
                 {
-                    fftDataToAdd[dataIndex].X = buffer[i];
+                    float a = buffer[i];
+
+                    fftDataToAdd[dataIndex] = new Complex() {X = buffer[i], Y = 0.0f};
+
+                    float c = fftDataToAdd[dataIndex].X;
 
                     dataIndex++;
                     if (i == samplesRead - 1 && dataIndex != fftSize)
@@ -78,15 +82,6 @@ namespace WinForms_TestApp
                         fftDataToAdd = new Complex[fftSize];
                         dataIndex = 0;
                     }
-                    //if (bufferIndex < fftSize)
-                    //{
-                    //    audioBuffer[bufferIndex] = buffer[i + offset];
-                    //    bufferIndex++;
-                    //}
-                    //if (bufferIndex >= fftSize)
-                    //{
-                    //    bufferIndex = 0;  // Reset buffer index
-                    //}
                 }
                 return samplesRead;
             }

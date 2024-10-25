@@ -46,9 +46,9 @@ namespace WinForms_TestApp
         //Visualizer suff
         AnalysisType analysisType = AnalysisType.Sonogram3D;
 
-        const int TEXTURE_HEIGHT = 256;
-        const int SONOGRAM_3D_WIDTH = 256;
-        const int SONOGRAM_3D_HEIGHT = 256;
+        const int TEXTURE_HEIGHT = 256;//256
+        const int SONOGRAM_3D_WIDTH = 256;//256
+        const int SONOGRAM_3D_HEIGHT = 256;//256
         const float SONOGRAM_3D_GEOMETRY_SIZE = 9.5f;
         const int ATTRIBUTE_POSITION_INDEX = 0;
         const int ATTRIBUTE_TEXTURE_COORDINATE_INDEX = 1;
@@ -91,7 +91,7 @@ namespace WinForms_TestApp
 
             int numVertices = SONOGRAM_3D_WIDTH * SONOGRAM_3D_HEIGHT;
             if (numVertices > ushort.MaxValue + 1)
-            { 
+            {
                 throw new Exception("Sonogram 3D resolution is too high: can only handle 65536 vertices max");
             }
 
@@ -104,9 +104,9 @@ namespace WinForms_TestApp
                 for (int x = 0; x < SONOGRAM_3D_WIDTH; x++)
                 {
                     // Generate a reasonably fine mesh in the X-Z plane
-                    vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 0] = SONOGRAM_3D_GEOMETRY_SIZE * (x - SONOGRAM_3D_WIDTH / 2) / SONOGRAM_3D_WIDTH;//x
+                    vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 0] = SONOGRAM_3D_GEOMETRY_SIZE * (x - (float)SONOGRAM_3D_WIDTH / 2) / SONOGRAM_3D_WIDTH;//x
                     vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 1] = 0;//y
-                    vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 2] = SONOGRAM_3D_GEOMETRY_SIZE * (z - SONOGRAM_3D_HEIGHT / 2) / SONOGRAM_3D_HEIGHT;//z
+                    vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 2] = SONOGRAM_3D_GEOMETRY_SIZE * (z - (float)SONOGRAM_3D_HEIGHT / 2) / SONOGRAM_3D_HEIGHT;//z
                     vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 3] = x / (float)(SONOGRAM_3D_WIDTH - 1);//u
                     vertices[5 * (SONOGRAM_3D_WIDTH * z + x) + 4] = z / (float)(SONOGRAM_3D_HEIGHT - 1);//v
                 }
@@ -192,12 +192,6 @@ namespace WinForms_TestApp
             byte[] tmp = new byte[freqByteData.Length * TEXTURE_HEIGHT];
             GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.R8, freqByteData.Length, TEXTURE_HEIGHT, 0, PixelFormat.Red, PixelType.UnsignedByte, tmp);
 
-            //InitTriangle();
-
-            //GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
-            //GL.BindVertexArray(0);
-            //GL.GetError();
-
         }
         private void DrawGL()
         {
@@ -213,9 +207,6 @@ namespace WinForms_TestApp
             yoffset = (yoffset + 1) % TEXTURE_HEIGHT;
 
             GL.BindBuffer(BufferTarget.ArrayBuffer, VBO_BufferID);
-            //test
-            //GL.BufferData(BufferTarget.ArrayBuffer, quadVertices.Length * sizeof(float), quadVertices, BufferUsageHint.StaticDraw);
-
             GL.BindVertexArray(VAO_BufferID);
             Sonogram3DShader.UseShader();
 
@@ -274,57 +265,32 @@ namespace WinForms_TestApp
             // Note: this expects the element array buffer to still be bound
             GL.DrawElements(PrimitiveType.Triangles, sonogram3DNumIndices, DrawElementsType.UnsignedShort, 0);
 
-
-            // Disable the attribute arrays for cleanliness
-            //GL.DisableVertexAttribArray(positionIndex);
-            //GL.DisableVertexAttribArray(textureCoordinatesIndex);
-
             frames++;
             Label_Frames.Text = frames.ToString();
             GlControl_MainView.SwapBuffers();
         }
-
-        CancellationTokenSource cts = new();
-        Task bck = null;
         public MainForm()
         {
             InitializeComponent();
         }
-        private void AudioTest(CancellationToken cts)
+        ISampleProvider sampleProvider;
+        AudioAnalyzerB analyzer;
+        WaveOutEvent waveOut;
+        AudioFileReader audioFile;
+        private void AudioTest()
         {
-            using var audioFile = new AudioFileReader(testPath + testFile);
+            audioFile = new AudioFileReader(testPath + testFile);
+            sampleProvider = audioFile.ToSampleProvider();
+            //analyzer = new AudioAnalyzer(sampleProvider, bufferedWaveProvider);
+            analyzer = new AudioAnalyzerB(sampleProvider, BiQuadFilter.BandPassFilterConstantSkirtGain(audioFile.WaveFormat.SampleRate, 350, 10));
+            waveOut = new WaveOutEvent();
+            waveOut.DesiredLatency = 50;
+            waveOut.NumberOfBuffers = 2;
+            analyzer.Gain = 1000f;
 
-            // Create a custom WaveProvider that will analyze audio while playing
-            var sampleProvider = audioFile.ToSampleProvider();
-            var bufferedWaveProvider = new BufferedWaveProvider(audioFile.WaveFormat);
-            var analyzer = new AudioAnalyzer(sampleProvider, bufferedWaveProvider);
-            using var waveOut = new WaveOutEvent();
             waveOut.Init(analyzer);
             waveOut.Volume = 0.1f;
             waveOut.Play();
-
-            while (waveOut.PlaybackState == PlaybackState.Playing && !canceling)
-            {
-                freqByteData = analyzer.GetByteFrequencyData();
-                //for (int i = 0; i > freqByteData.Length; i++)
-                //{
-                //    freqByteData[i] = 120;
-                //}
-
-                Invoke(() =>
-                {
-                    //StringBuilder sb = new();
-                    //foreach (float fl in freqByteData)
-                    //{
-                    //    sb.Append(',' + fl.ToString());
-                    //}
-                    //TextBox_Data.Text = sb.ToString();
-                    DrawGL();
-                });
-
-                Thread.Sleep(10);  // Adjust for refresh rate
-            }
-            waveOut.Stop();
         }
         //
         private void GlControl_MainView_Paint(object sender, PaintEventArgs e)
@@ -336,13 +302,10 @@ namespace WinForms_TestApp
         {
             Console.WriteLine("Init Console Done.");
             InitGL();
-            bck = new Task(() => AudioTest(cts.Token));
-            bck.Start();
+            AudioTest();
         }
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            cts.Cancel();
-            canceling = true;
             //bck.Wait();
         }
 
@@ -362,7 +325,7 @@ namespace WinForms_TestApp
 
             // The rest of the function is up to you to implement, however a debug output
             // is always useful.
-            Console.WriteLine("[{0} source={1} type={2} id={3}] {4}", severity, source, type, id, message);
+            //Console.WriteLine("[{0} source={1} type={2} id={3}] {4}", severity, source, type, id, message);
 
             // Potentially, you may want to throw from the function for certain severity
             // messages.
@@ -370,6 +333,22 @@ namespace WinForms_TestApp
             {
                 throw new Exception(message);
             }
+        }
+
+        private void Timer_UpdateGL_Tick(object sender, EventArgs e)
+        {
+            byte[] processed = analyzer.GetByteFrequencyData();
+            if (processed.Length != 0)
+            {
+                freqByteData = processed;
+            }
+            if (waveOut.PlaybackState == PlaybackState.Stopped)
+            {
+                freqByteData = new byte[freqByteData.Length];
+            }
+
+            DrawGL();
+            Timer_UpdateGL.Start();
         }
     }
 }
