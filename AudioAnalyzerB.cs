@@ -31,9 +31,10 @@ namespace WinForms_TestApp
         public float Gain {  get; set; } = 1.0f;
 
 
-        public AudioAnalyzerB(ISampleProvider source, BiQuadFilter filter)
+        public AudioAnalyzerB(ISampleProvider source, int fft, BiQuadFilter filter = null)
         {
             this.source = source;
+            fftSize = fft;
             previousByteData = new float[fftSize / 2];
             magnitudeData = new float[fftSize];
             incompleteDataIndex = -1;
@@ -48,31 +49,35 @@ namespace WinForms_TestApp
             lock (bufferlock)
             {
                 int samplesRead = source.Read(buffer, offset, count);
-                //generator.Add(Array.ConvertAll(buffer, x => (double)x), false);
                 // Write the audio data to the buffer (for playback)
                 int dataIndex = 0;
                 Complex[] fftDataToAdd;
+
+                //if there is incomplete data
                 if (incompleteDataIndex != -1)
                 {
                     fftDataToAdd = incompleteData;
                     dataIndex = incompleteDataIndex;
                 }
+                //if there is no incomplete data
                 else
                 {
                     fftDataToAdd = new Complex[fftSize];
                 }
-                incompleteDataIndex = -1;
+                incompleteDataIndex = -1;//reset incomplete index
                 for (int i = 0; i < samplesRead; i++)
                 {
-                    float sample = bandpass.Transform(buffer[i] * Gain);
+                    //float sample = bandpass.Transform(buffer[i] * Gain);
                     fftDataToAdd[dataIndex].X = buffer[i] * Gain;
 
                     dataIndex++;
+                    //if we are on the last sample but didnt fill the current buffer completely
                     if (i == samplesRead - 1 && dataIndex != fftSize)
                     {
                         incompleteDataIndex = dataIndex;
                         incompleteData = fftDataToAdd;
                     }
+                    //if we are not on the last sample and we have filled
                     else if (i != samplesRead - 1 && dataIndex >= fftSize)
                     {
                         dataQueue.Enqueue(fftDataToAdd);
@@ -94,11 +99,13 @@ namespace WinForms_TestApp
 
             for (int i = 0; i < fftSize; i++)
             {
-                process[i].X *= (float)FastFourierTransform.HannWindow(i, fftSize);
+                //process[i].X *= (float)FastFourierTransform.HannWindow(i, fftSize);
+                process[i].X *= (float)BlackmanWindow(i, fftSize);
             }
 
             FastFourierTransform.FFT(true, (int)Math.Log(fftSize, 2), process);
 
+            //average the current fft magnitude results with the previous results
             for (int i = 0; i < process.Length; i++)
             {
                 float scalarMagnitude = process[i].Abs() * magnitudeScale;
@@ -141,6 +148,18 @@ namespace WinForms_TestApp
             }
 
             return byteFrequencyData;
+        }
+
+        public static double BlackmanWindow(int n, int frameSize)
+        {
+            double alpha = 0.16;
+            double a0 = (1 - alpha) / 2;
+            double a1 = 0.5;
+            double a2 = alpha / 2;
+
+            return a0
+                   - a1 * Math.Cos((2 * Math.PI * n) / (frameSize - 1))
+                   + a2 * Math.Cos((4 * Math.PI * n) / (frameSize - 1));
         }
     }
 }

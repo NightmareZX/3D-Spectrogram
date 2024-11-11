@@ -13,38 +13,23 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 using OpenTK.Graphics.OpenGL4;
+using NAudio.Utils;
+using Microsoft.Web.WebView2.Core;
 //using OpenTK.Graphics.ES20;
 
 
 namespace WinForms_TestApp
 {
-    public enum AnalysisType
-    {
-        Frequency,
-        Waveform,
-        Sonogram,
-        Sonogram3D
-    }
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Sonogram3DVertex
-    {
-        float x, y, z;
-        float u, v;
-    }
-
     public partial class MainForm : Form
     {
         private static DebugProc DebugMessageDelegate = OnDebugMessage;
 
-        string testFile = "birds-ambiance-204513-mono.mp3";
-        string testPath = "C:\\Users\\Zsolt\\source\\repos\\WinForms_TestApp\\";
+        const string testFile = "birds-ambiance-204513-mono.mp3";
+        const string testPath = "C:\\Users\\Zsolt\\source\\repos\\WinForms_TestApp\\";
         int frames = 0;
         int fftSize = 2048;
         bool canceling = false;
         public int FrequencyBinCount => fftSize / 2;
-
-        //Visualizer suff
-        AnalysisType analysisType = AnalysisType.Sonogram3D;
 
         const int TEXTURE_HEIGHT = 256;//256
         const int SONOGRAM_3D_WIDTH = 256;//256
@@ -77,10 +62,67 @@ namespace WinForms_TestApp
         public bool Camera_dragging = false;
         public float Camera_curX = 0;
         public float Camera_curY = 0;
+
+        //AudioAnalyzerB analyzer;
+        AudioAnalyzerC analyzer;
+        WaveOutEvent waveOut;
+        AudioFileReader audioFile;
+        public MainForm()
+        {
+            InitializeComponent();
+            WebView_AudioProc.CoreWebView2InitializationCompleted += async (a, b) => { await LoadApp(); };
+        }
+        private async Task LoadApp()
+        {
+            InitGL();
+            WebView_AudioProc.CoreWebView2.OpenDevToolsWindow();
+            WebView_AudioProc.CoreWebView2.NavigateToString(@$"
+<html>
+  <body>
+    <script>
+        {File.ReadAllText(testPath + "audioAnalyzerJS.js")}
+    </script>
+  </body>
+</html>
+            ");
+            WebView_AudioProc.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+
+            fftSize = 2048;
+
+            byte[] mp3Data = await File.ReadAllBytesAsync(testPath + testFile);
+            string base64Data = Convert.ToBase64String(mp3Data);
+
+
+            string js = $@"
+const mp3Data = 'data:audio/mp3;base64,{base64Data}';
+loadAndPlayAudio(mp3Data);";
+
+            await WebView_AudioProc.ExecuteScriptAsync(js);
+
+            audioFile = new AudioFileReader(testPath + testFile);
+            //analyzer = new AudioAnalyzerB(sampleProvider, fftSize);
+            analyzer = new AudioAnalyzerC(audioFile, fftSize);
+            waveOut = new WaveOutEvent();
+            waveOut.DesiredLatency = 50;
+            waveOut.NumberOfBuffers = 2;
+            analyzer.Gain = 1000f;
+
+            waveOut.Init(analyzer);
+            waveOut.Volume = 0.1f;
+
+            //waveOut.Play();
+
+            Timer_UpdateGL.Enabled = true;
+        }
+        private async void MainForm_Load(object sender, EventArgs e)
+        {
+            await WebView_AudioProc.EnsureCoreWebView2Async(null);
+        }
         private void InitGL()
         {
             GlControl_MainView.MakeCurrent();
             GL.Viewport(GlControl_MainView.Location.X, GlControl_MainView.Location.Y, GlControl_MainView.Width, GlControl_MainView.Height);
+            //GL.Viewport(0, 0, GlControl_MainView.Width, GlControl_MainView.Height);
             GL.ClearColor(backgroundColor);
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.Texture2D);
@@ -198,6 +240,7 @@ namespace WinForms_TestApp
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, FrequencyDataTextureID);
             GL.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
+
             GL.TexSubImage2D(TextureTarget.Texture2D, 0, 0, yoffset, freqByteData.Length, 1, PixelFormat.Red, PixelType.UnsignedByte, freqByteData);
 
             //The current texture is taken from the currently active texture unit, which in this case is 0
@@ -266,44 +309,22 @@ namespace WinForms_TestApp
             GL.DrawElements(PrimitiveType.Triangles, sonogram3DNumIndices, DrawElementsType.UnsignedShort, 0);
 
             frames++;
-            Label_Frames.Text = frames.ToString();
+            //Label_Frames.Text = "Frames: " + frames.ToString() + ", Position:" + (waveOut.GetPosition() / 4).ToString() + ", PositionTime:" + waveOut.GetPositionTimeSpan().ToString();
+            Label_Frames.Text = "Frames: " + frames.ToString();
             GlControl_MainView.SwapBuffers();
         }
-        public MainForm()
+        private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs args)
         {
-            InitializeComponent();
-        }
-        ISampleProvider sampleProvider;
-        AudioAnalyzerB analyzer;
-        WaveOutEvent waveOut;
-        AudioFileReader audioFile;
-        private void AudioTest()
-        {
-            audioFile = new AudioFileReader(testPath + testFile);
-            sampleProvider = audioFile.ToSampleProvider();
-            //analyzer = new AudioAnalyzer(sampleProvider, bufferedWaveProvider);
-            analyzer = new AudioAnalyzerB(sampleProvider, BiQuadFilter.BandPassFilterConstantSkirtGain(audioFile.WaveFormat.SampleRate, 350, 10));
-            waveOut = new WaveOutEvent();
-            waveOut.DesiredLatency = 50;
-            waveOut.NumberOfBuffers = 2;
-            analyzer.Gain = 1000f;
+            // Parse the message from JavaScript
+            //byte[]? request = System.Text.Json.JsonSerializer.Deserialize<byte[]>(args.WebMessageAsJson);
+            string req1 = args.WebMessageAsJson.Substring(1, args.WebMessageAsJson.Length - 2);
+            var a = req1.Split(',');
 
-            waveOut.Init(analyzer);
-            waveOut.Volume = 0.1f;
-            waveOut.Play();
-        }
-        //
-        private void GlControl_MainView_Paint(object sender, PaintEventArgs e)
-        {
-            //DrawGL();
+            freqByteData = Array.ConvertAll(a, byte.Parse);
+            freqByteData ??= new byte[FrequencyBinCount];
+
         }
 
-        private void GlControl_MainView_Load(object sender, EventArgs e)
-        {
-            Console.WriteLine("Init Console Done.");
-            InitGL();
-            AudioTest();
-        }
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             //bck.Wait();
@@ -334,10 +355,9 @@ namespace WinForms_TestApp
                 throw new Exception(message);
             }
         }
-
-        private void Timer_UpdateGL_Tick(object sender, EventArgs e)
+        private void GetData()
         {
-            byte[] processed = analyzer.GetByteFrequencyData();
+            byte[] processed = analyzer.GetByteFrequencyData(waveOut.GetPosition());
             if (processed.Length != 0)
             {
                 freqByteData = processed;
@@ -346,9 +366,24 @@ namespace WinForms_TestApp
             {
                 freqByteData = new byte[freqByteData.Length];
             }
+        }
+        private async void Timer_UpdateGL_Tick(object sender, EventArgs e)
+        {
+            //GetData();
+            await WebView_AudioProc.ExecuteScriptAsync("getFrequencyData()");
 
             DrawGL();
             Timer_UpdateGL.Start();
+        }
+
+        private void reloadWebPageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            WebView_AudioProc.Reload();
+        }
+
+        private void openInspectElementToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            WebView_AudioProc.CoreWebView2.OpenDevToolsWindow();
         }
     }
 }

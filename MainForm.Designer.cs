@@ -32,6 +32,12 @@
             GlControl_MainView = new OpenTK.GLControl.GLControl();
             Label_Frames = new Label();
             Timer_UpdateGL = new System.Windows.Forms.Timer(components);
+            WebView_AudioProc = new Microsoft.Web.WebView2.WinForms.WebView2();
+            MenuStrip_Main = new MenuStrip();
+            reloadWebPageToolStripMenuItem = new ToolStripMenuItem();
+            openInspectElementToolStripMenuItem = new ToolStripMenuItem();
+            ((System.ComponentModel.ISupportInitialize)WebView_AudioProc).BeginInit();
+            MenuStrip_Main.SuspendLayout();
             SuspendLayout();
             // 
             // GlControl_MainView
@@ -40,19 +46,17 @@
             GlControl_MainView.APIVersion = new Version(3, 3, 0, 0);
             GlControl_MainView.Flags = OpenTK.Windowing.Common.ContextFlags.Default;
             GlControl_MainView.IsEventDriven = true;
-            GlControl_MainView.Location = new Point(12, 32);
+            GlControl_MainView.Location = new Point(12, 51);
             GlControl_MainView.Name = "GlControl_MainView";
             GlControl_MainView.Profile = OpenTK.Windowing.Common.ContextProfile.Core;
             GlControl_MainView.SharedContext = null;
-            GlControl_MainView.Size = new Size(1458, 593);
+            GlControl_MainView.Size = new Size(1458, 619);
             GlControl_MainView.TabIndex = 0;
-            GlControl_MainView.Load += GlControl_MainView_Load;
-            GlControl_MainView.Paint += GlControl_MainView_Paint;
             // 
             // Label_Frames
             // 
             Label_Frames.AutoSize = true;
-            Label_Frames.Location = new Point(12, 9);
+            Label_Frames.Location = new Point(12, 33);
             Label_Frames.Name = "Label_Frames";
             Label_Frames.Size = new Size(13, 15);
             Label_Frames.TabIndex = 1;
@@ -60,20 +64,60 @@
             // 
             // Timer_UpdateGL
             // 
-            Timer_UpdateGL.Enabled = true;
-            Timer_UpdateGL.Interval = 20;
+            Timer_UpdateGL.Interval = 1;
             Timer_UpdateGL.Tick += Timer_UpdateGL_Tick;
+            // 
+            // WebView_AudioProc
+            // 
+            WebView_AudioProc.AllowExternalDrop = true;
+            WebView_AudioProc.CreationProperties = null;
+            WebView_AudioProc.DefaultBackgroundColor = Color.White;
+            WebView_AudioProc.Location = new Point(1368, 26);
+            WebView_AudioProc.Name = "WebView_AudioProc";
+            WebView_AudioProc.Size = new Size(102, 23);
+            WebView_AudioProc.TabIndex = 2;
+            WebView_AudioProc.ZoomFactor = 1D;
+            // 
+            // MenuStrip_Main
+            // 
+            MenuStrip_Main.Items.AddRange(new ToolStripItem[] { reloadWebPageToolStripMenuItem, openInspectElementToolStripMenuItem });
+            MenuStrip_Main.Location = new Point(0, 0);
+            MenuStrip_Main.Name = "MenuStrip_Main";
+            MenuStrip_Main.Size = new Size(1482, 24);
+            MenuStrip_Main.TabIndex = 3;
+            MenuStrip_Main.Text = "menuStrip1";
+            // 
+            // reloadWebPageToolStripMenuItem
+            // 
+            reloadWebPageToolStripMenuItem.Name = "reloadWebPageToolStripMenuItem";
+            reloadWebPageToolStripMenuItem.Size = new Size(108, 20);
+            reloadWebPageToolStripMenuItem.Text = "Reload WebPage";
+            reloadWebPageToolStripMenuItem.Click += reloadWebPageToolStripMenuItem_Click;
+            // 
+            // openInspectElementToolStripMenuItem
+            // 
+            openInspectElementToolStripMenuItem.Name = "openInspectElementToolStripMenuItem";
+            openInspectElementToolStripMenuItem.Size = new Size(135, 20);
+            openInspectElementToolStripMenuItem.Text = "Open Inspect Element";
+            openInspectElementToolStripMenuItem.Click += openInspectElementToolStripMenuItem_Click;
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1482, 648);
+            ClientSize = new Size(1482, 677);
+            Controls.Add(WebView_AudioProc);
             Controls.Add(Label_Frames);
             Controls.Add(GlControl_MainView);
+            Controls.Add(MenuStrip_Main);
+            MainMenuStrip = MenuStrip_Main;
             Name = "MainForm";
             Text = "MainView";
             FormClosing += MainForm_FormClosing;
+            Load += MainForm_Load;
+            ((System.ComponentModel.ISupportInitialize)WebView_AudioProc).EndInit();
+            MenuStrip_Main.ResumeLayout(false);
+            MenuStrip_Main.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -83,5 +127,9 @@
         private OpenTK.GLControl.GLControl GlControl_MainView;
         private Label Label_Frames;
         private System.Windows.Forms.Timer Timer_UpdateGL;
+        private Microsoft.Web.WebView2.WinForms.WebView2 WebView_AudioProc;
+        private MenuStrip MenuStrip_Main;
+        private ToolStripMenuItem reloadWebPageToolStripMenuItem;
+        private ToolStripMenuItem openInspectElementToolStripMenuItem;
     }
 }
